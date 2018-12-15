@@ -11,7 +11,7 @@ function Householder(x::Vector{Float64})::Tuple{Vector{Float64}, Float64, Float6
     sigma = dot(x[2:end], x[2:end])
 
     if sigma == 0
-        return (zeros(Float64, length(x)), 0, x[1])
+        return (zeros(Float64, length(x)), 0., x[1])
     else
         norm_x = sqrt(x[1]^2 + sigma)
         v = copy(x)
@@ -23,7 +23,7 @@ function Householder(x::Vector{Float64})::Tuple{Vector{Float64}, Float64, Float6
             alpha = -norm_x
         end
         normalize!(v)
-        return v, 2, alpha
+        return v, 2., alpha
     end
 end
 
@@ -35,14 +35,14 @@ function Householder(x::Vector{Complex128})::Tuple{Vector{Complex128}, Float64, 
     sigma = dot(x[2:end], x[2:end])
 
     if sigma == 0
-        return (zeros(Complex128, length(x)), 0.0, x[1])
+        return (zeros(Complex128, length(x)), 0., x[1])
     else
         norm_x = sqrt(abs2(x[1]) + sigma)
         v = copy(x)
         phase = exp(im * atan2(imag(x[1]), real(x[1])))
         v[1] += phase * norm_x
         normalize!(v)
-        return (v, 2.0, -phase * norm_x)
+        return (v, 2., -phase * norm_x)
     end
 end
 
@@ -70,7 +70,6 @@ function skew_tridiagonalize(A::Matrix{T}; overwrite_A=false, calc_Q=true) where
             A[i, i+2:end] = 0.
         end
 
-        # w = tau * A[i+1:end, i+1:end] * conj(v)
         @inbounds w = @view(A[i+1:end, i+1:end]) * conj(v)
 
         # A[i+1:end, i+1:end] += v * w.' - w * v.' # most natural way == turtle

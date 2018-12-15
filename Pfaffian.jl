@@ -5,7 +5,7 @@
 # (file, filename, data) = imp.find_module("pfaffian", [path]);
 # pfaffian = imp.load_module(name, file, filename, data)
 
-function Householder(x::Vector{Float64})
+function Householder(x::Vector{Float64})::Tuple{Vector{Float64}, Float64, Float64}
     @assert length(x) > 0
 
     sigma = dot(x[2:end], x[2:end])
@@ -29,28 +29,27 @@ end
 
 Householder(x::Vector{Int}) = Householder(convert(Vector{Float64}, x))
 
-function Householder(x::Vector{Complex128})
-    @assert length(x) > 0
+function Householder(x::Vector{Complex128})::Tuple{Vector{Complex128}, Float64, Complex128}
+    @assert length(x) > 1
 
     sigma = dot(x[2:end], x[2:end])
 
     if sigma == 0
-        return (zeros(Complex128, length(x)), 0, x[1])
+        return (zeros(Complex128, length(x)), 0.0, x[1])
     else
         norm_x = sqrt(abs2(x[1]) + sigma)
         v = copy(x)
         phase = exp(im * atan2(imag(x[1]), real(x[1])))
         v[1] += phase * norm_x
         normalize!(v)
-        return v, 2, -phase * norm_x
+        return (v, 2.0, -phase * norm_x)
     end
 end
 
-function skew_tridiagonalize(A::Union{Matrix{Float64}, Matrix{Complex128}}; overwrite_A=false, calc_Q=true)
+function skew_tridiagonalize(A::Matrix{T}; overwrite_A=false, calc_Q=true) where {T <: Number}
     @assert size(A)[1] == size(A)[2] > 0
-    @assert maximum(abs, A + A.') < 1e-14
+    @assert maximum(abs, A + A.') < 1e-12
 
-    T = eltype(A)
     n = size(A)[1]
 
     # FIXME: not very Julian...
@@ -63,24 +62,27 @@ function skew_tridiagonalize(A::Union{Matrix{Float64}, Matrix{Complex128}}; over
     end
 
     for i in 1:n-2
-        v, tau, alpha = Householder(A[i+1:end, i])
-        A[i+1, i] = alpha
-        A[i, i+1] = -alpha
-        A[i+2:end, i] = 0.
-        A[i, i+2:end] = 0.
+        v::Vector{T}, tau::Float64, alpha::T = Householder(A[i+1:end, i])
+        @inbounds begin
+            A[i+1, i] = alpha
+            A[i, i+1] = -alpha
+            A[i+2:end, i] = 0.
+            A[i, i+2:end] = 0.
+        end
 
         # w = tau * A[i+1:end, i+1:end] * conj(v)
-        w = tau * @view(A[i+1:end, i+1:end]) * conj(v)
+        @inbounds w = @view(A[i+1:end, i+1:end]) * conj(v)
+
         # A[i+1:end, i+1:end] += v * w.' - w * v.' # most natural way == turtle
         # A[i+1:end, i+1:end] .+= v .* w.' .- w .* v.' # new dot syntax == useless
         # optimize outer product computation with BLAS
         # (see https://www.reddit.com/r/Julia/comments/32qad9/how_to_calculate_an_outer_product_efficiently/)
-        BLAS.ger!(T(1.), v, conj(w), @view(A[i+1:end, i+1:end]))
-        BLAS.ger!(T(-1.), w, conj(v), @view(A[i+1:end, i+1:end]))
+        @inbounds BLAS.ger!(T(tau), v, conj(w), @view(A[i+1:end, i+1:end]))
+        @inbounds BLAS.ger!(T(-tau), w, conj(v), @view(A[i+1:end, i+1:end]))
 
         if calc_Q
-            y = tau * @view(Q[:, i+1:end]) * v
-            BLAS.ger!(T(-1.), y, v, @view(Q[:, i+1:end]))
+            @inbounds y = @view(Q[:, i+1:end]) * v
+            @inbounds BLAS.ger!(T(-tau), y, v, @view(Q[:, i+1:end]))
         end
     end
 
@@ -175,9 +177,9 @@ function Pfaffian_Householder(A::Union{Matrix{Float64}, Matrix{Complex128}}; ove
         A[i+2:end, i] = 0.
         A[i, i+2:end] = 0.
 
-        w = tau * @view(A[i+1:end, i+1:end]) * conj(v)
-        BLAS.ger!(T(1.), v, conj(w), @view(A[i+1:end, i+1:end]))
-        BLAS.ger!(T(-1.), w, conj(v), @view(A[i+1:end, i+1:end]))
+        w = @view(A[i+1:end, i+1:end]) * conj(v)
+        BLAS.ger!(T(tau), v, conj(w), @view(A[i+1:end, i+1:end]))
+        BLAS.ger!(T(-tau), w, conj(v), @view(A[i+1:end, i+1:end]))
 
         if tau != 0
             pf_val *= 1. - tau

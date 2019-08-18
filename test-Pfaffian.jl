@@ -7,7 +7,7 @@ using PyCall
 @pyimport imp
 path = dirname("pfapack/python/pfaffian.py")
 name = basename("pfapack/python/pfaffian.py")
-(file, filename, data) = imp.find_module("pfaffian", [path]);
+(file, filename, data) = imp.find_module("pfaffian", [path])
 pfaffian = imp.load_module(name, file, filename, data)
 
 N = 100
@@ -39,15 +39,15 @@ T_w, Q_w = pfaffian[:skew_tridiagonalize](A)
 println()
 
 pf_ltl = Pfaffian_LTL(A)
-pf_ltl_w = pfaffian[:pfaffian](A, method="P")
+pf_ltl_w = pfaffian[:pfaffian](A, method = "P")
 
-@show abs((pf_ltl - pf_ltl_w)/pf_ltl_w)
+@show abs((pf_ltl - pf_ltl_w) / pf_ltl_w)
 println()
 
 pf_h = Pfaffian_Householder(A)
-pf_h_w = pfaffian[:pfaffian](A, method="H")
+pf_h_w = pfaffian[:pfaffian](A, method = "H")
 
-@show abs((pf_h - pf_h_w)/pf_h_w)
+@show abs((pf_h - pf_h_w) / pf_h_w)
 println()
 
 println()
@@ -75,22 +75,22 @@ T_w, Q_w = pfaffian[:skew_tridiagonalize](convert(Matrix{Float64}, A))
 println()
 
 pf_ltl = Pfaffian_LTL(A)
-pf_ltl_w = pfaffian[:pfaffian](A, method="P")
+pf_ltl_w = pfaffian[:pfaffian](A, method = "P")
 
-@show abs((pf_ltl - pf_ltl_w)/pf_ltl_w)
+@show abs((pf_ltl - pf_ltl_w) / pf_ltl_w)
 println()
 
 pf_h = Pfaffian_Householder(A)
-pf_h_w = pfaffian[:pfaffian](A, method="H")
+pf_h_w = pfaffian[:pfaffian](A, method = "H")
 
-@show abs((pf_h - pf_h_w)/pf_h_w)
+@show abs((pf_h - pf_h_w) / pf_h_w)
 println()
 
 println()
 println("Testing complex methods:")
 println()
 
-x = rand(Complex128, N)
+x = rand(ComplexF64, N)
 
 v, tau, alpha = Householder(x)
 v_w, tau_w, alpha_w = pfaffian[:householder_complex](x)
@@ -100,7 +100,7 @@ v_w, tau_w, alpha_w = pfaffian[:householder_complex](x)
 @show abs(alpha - alpha_w)
 println()
 
-A = rand(Complex128, (N, N))
+A = rand(ComplexF64, (N, N))
 A = A - A.'
 
 T, Q = skew_tridiagonalize(A)
@@ -111,13 +111,13 @@ T_w, Q_w = pfaffian[:skew_tridiagonalize](A)
 println()
 
 pf_ltl = Pfaffian_LTL(A)
-pf_ltl_w = pfaffian[:pfaffian](A, method="P")
+pf_ltl_w = pfaffian[:pfaffian](A, method = "P")
 
-@show abs((pf_ltl - pf_ltl_w)/pf_ltl_w)
+@show abs((pf_ltl - pf_ltl_w) / pf_ltl_w)
 println()
 
 pf_h = Pfaffian_Householder(A)
-pf_h_w = pfaffian[:pfaffian](A, method="H")
+pf_h_w = pfaffian[:pfaffian](A, method = "H")
 
-@show abs((pf_h - pf_h_w)/pf_h_w)
+@show abs((pf_h - pf_h_w) / pf_h_w)
 println()

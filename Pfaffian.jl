@@ -5,7 +5,7 @@
 # (file, filename, data) = imp.find_module("pfaffian", [path]);
 # pfaffian = imp.load_module(name, file, filename, data)
 
-function Householder(x::Vector{Float64})::Tuple{Vector{Float64}, Float64, Float64}
+function Householder(x::Vector{Float64})::Tuple{Vector{Float64},Float64,Float64}
     @assert length(x) > 0
 
     sigma = dot(x[2:end], x[2:end])
@@ -29,13 +29,13 @@ end
 
 Householder(x::Vector{Int}) = Householder(convert(Vector{Float64}, x))
 
-function Householder(x::Vector{Complex128})::Tuple{Vector{Complex128}, Float64, Complex128}
+function Householder(x::Vector{ComplexF64})::Tuple{Vector{ComplexF64},Float64,ComplexF64}
     @assert length(x) > 1
 
     sigma = dot(x[2:end], x[2:end])
 
     if sigma == 0
-        return (zeros(Complex128, length(x)), 0., x[1])
+        return (zeros(ComplexF64, length(x)), 0., x[1])
     else
         norm_x = sqrt(abs2(x[1]) + sigma)
         v = copy(x)
@@ -46,9 +46,12 @@ function Householder(x::Vector{Complex128})::Tuple{Vector{Complex128}, Float64, 
     end
 end
 
-function skew_tridiagonalize(A::Matrix{T}; overwrite_A=false, calc_Q=true) where {T <: Number}
+function skew_tridiagonalize(
+    A::Matrix{T};
+    overwrite_A = false, calc_Q = true
+) where {T<:Number}
     @assert size(A)[1] == size(A)[2] > 0
-    @assert maximum(abs, A + A.') < 1e-12
+    @assert maximum(abs, A + A') < 1e-12
 
     n = size(A)[1]
 
@@ -92,18 +95,25 @@ function skew_tridiagonalize(A::Matrix{T}; overwrite_A=false, calc_Q=true) where
     end
 end
 
-function skew_tridiagonalize(A::Matrix{Int}; overwrite_A=false, calc_Q=true)
-    return skew_tridiagonalize(convert(Matrix{Float64}, A), overwrite_A=overwrite_A, calc_Q=calc_Q)
+function skew_tridiagonalize(A::Matrix{Int}; overwrite_A = false, calc_Q = true)
+    return skew_tridiagonalize(
+        convert(Matrix{Float64}, A),
+        overwrite_A = overwrite_A,
+        calc_Q = calc_Q
+    )
 end
 
-function Pfaffian_LTL(A::Union{Matrix{Float64}, Matrix{Complex128}}; overwrite_A=false, skewsymtol=1e-6)::Union{Float64, Complex128}
+function Pfaffian_LTL(
+    A::Union{Matrix{Float64},Matrix{ComplexF64}};
+    overwrite_A = false, skewsymtol = 1e-6
+)::Union{Float64,ComplexF64}
     @assert size(A)[1] == size(A)[2] > 0
-    @assert maximum(abs, A + A.') < skewsymtol
+    @assert maximum(abs, A + A') < skewsymtol
 
     T = eltype(A)
     n = size(A)[1]
 
-    if n%2 == 1
+    if n % 2 == 1
         return T(0.)
     end
 
@@ -114,10 +124,10 @@ function Pfaffian_LTL(A::Union{Matrix{Float64}, Matrix{Complex128}}; overwrite_A
 
     pf_val = T(1.)
 
-    for k in 1:2:n-1
-        kp = k + indmax(abs.(A[k+1:end, k]))
+    for k in 1:2:n - 1
+        kp = k + argmax(abs.(A[k+1:end, k]))[1]
 
-        if kp != k+1
+        if kp != k + 1
             temp = copy(A[k+1, k:end])
             A[k+1, k:end] = @view(A[kp, k:end])
             A[kp, k:end] = temp
@@ -135,9 +145,19 @@ function Pfaffian_LTL(A::Union{Matrix{Float64}, Matrix{Complex128}}; overwrite_A
 
             pf_val *= A[k, k+1]
 
-            if k+2 <= n
-                BLAS.ger!(T(1.), tau, conj(@view(A[k+2:end, k+1])), @view(A[k+2:end, k+2:end]))
-                BLAS.ger!(T(-1.), @view(A[k+2:end, k+1]), conj(tau), @view(A[k+2:end, k+2:end]))
+            if k + 2 <= n
+                BLAS.ger!(
+                    T(1.),
+                    tau,
+                    conj(@view(A[k+2:end, k+1])),
+                    @view(A[k+2:end, k+2:end])
+                )
+                BLAS.ger!(
+                    T(-1.),
+                    @view(A[k+2:end, k+1]),
+                    conj(tau),
+                    @view(A[k+2:end, k+2:end])
+                )
             end
         else
             return T(0.)
@@ -147,18 +167,25 @@ function Pfaffian_LTL(A::Union{Matrix{Float64}, Matrix{Complex128}}; overwrite_A
     return pf_val
 end
 
-function Pfaffian_LTL(A::Matrix{Int}; overwrite_A=false, skewsymtol=1e-6)::Float64
-    return Pfaffian_LTL(convert(Matrix{Float64}, A), overwrite_A=overwrite_A, skewsymtol=skewsymtol)
+function Pfaffian_LTL(A::Matrix{Int}; overwrite_A = false, skewsymtol = 1e-6)::Float64
+    return Pfaffian_LTL(
+        convert(Matrix{Float64}, A),
+        overwrite_A = overwrite_A,
+        skewsymtol = skewsymtol
+    )
 end
 
-function Pfaffian_Householder(A::Union{Matrix{Float64}, Matrix{Complex128}}; overwrite_A=false, skewsymtol=1e-6)::Union{Float64, Complex128}
+function Pfaffian_Householder(
+    A::Union{Matrix{Float64},Matrix{ComplexF64}};
+    overwrite_A = false, skewsymtol = 1e-6
+)::Union{Float64,ComplexF64}
     @assert size(A)[1] == size(A)[2] > 0
-    @assert maximum(abs, A + A.') < skewsymtol
+    @assert maximum(abs, A + A') < skewsymtol
 
     T = eltype(A)
     n = size(A)[1]
 
-    if n%2 == 1
+    if n % 2 == 1
         return T(0.)
     end
 
@@ -183,7 +210,7 @@ function Pfaffian_Householder(A::Union{Matrix{Float64}, Matrix{Complex128}}; ove
         if tau != 0
             pf_val *= 1. - tau
         end
-        if i%2 == 1
+        if i % 2 == 1
             pf_val *= -alpha
         end
     end
@@ -193,13 +220,21 @@ function Pfaffian_Householder(A::Union{Matrix{Float64}, Matrix{Complex128}}; ove
     return pf_val
 end
 
-function Pfaffian_Householder(A::Matrix{Int}; overwrite_A=false, skewsymtol=1e-6)::Float64
-    return Pfaffian_Householder(convert(Matrix{Float64}, A), overwrite_A=overwrite_A, skewsymtol=skewsymtol)
+function Pfaffian_Householder(
+    A::Matrix{Int};
+    overwrite_A = false, skewsymtol = 1e-6
+)::Float64
+    return Pfaffian_Householder(
+        convert(Matrix{Float64}, A),
+        overwrite_A = overwrite_A,
+        skewsymtol = skewsymtol
+    )
 end
 
 # default to LTL for speed
-Pfaffian(A::Matrix; overwrite_A=false, skewsymtol=1e-6)::Union{Float64, Complex128} = Pfaffian_LTL(A, overwrite_A=overwrite_A, skewsymtol=skewsymtol)
-# Pfaffian(A::Matrix; overwrite_A=false, skewsymtol=1e-6)::Union{Float64, Complex128} = Pfaffian_Householder(A, overwrite_A=overwrite_A, skewsymtol=skewsymtol)
+Pfaffian(A::Matrix; overwrite_A = false, skewsymtol = 1e-6)::Union{Float64,ComplexF64} =
+    Pfaffian_LTL(A, overwrite_A = overwrite_A, skewsymtol = skewsymtol)
+# Pfaffian(A::Matrix; overwrite_A=false, skewsymtol=1e-6)::Union{Float64, ComplexF64} = Pfaffian_Householder(A, overwrite_A=overwrite_A, skewsymtol=skewsymtol)
 
 # Wimmer's version
-# Pfaffian(A::Matrix; overwrite_A=false, skewsymtol=1e-6)::Union{Float64, Complex128} = pfaffian[:pfaffian](A, overwrite_a=overwrite_A, method="P")
+# Pfaffian(A::Matrix; overwrite_A=false, skewsymtol=1e-6)::Union{Float64, ComplexF64} = pfaffian[:pfaffian](A, overwrite_a=overwrite_A, method="P")
